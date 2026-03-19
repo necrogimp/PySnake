@@ -8,6 +8,7 @@ font = pygame.font.SysFont(None, 100)
 #Flags
 game_over = False
 running = True
+flagMoveAck = 0
 
 #Constantes
 gridWidth = 10
@@ -69,8 +70,7 @@ def spawnSnake():
         snakePosition.append((gridHeight//2, x))  #Y, X
 
 def moveSnake():
-    global coordonneesGoal, grid ,snakeSize, game_over
-    flag_move = 0
+    global coordonneesGoal, grid ,snakeSize, game_over, flagMoveAck
     #grid = [[0 for x in range(gridWidth)] for y in range(gridHeight)]
 
     moveDirection = direction[snakeDirection] #Retourne le Tuple souhaité en selectionnant dans la lookup le nom de la direction
@@ -81,11 +81,13 @@ def moveSnake():
     previousColumn = snakePosition[0][1]                    #X
 
     if(nextLine >= 0 and nextLine < gridHeight and nextColumn >= 0 and nextColumn < gridWidth): #On check la collision avec les murs
+        print(snakeDirection)
         snakePosition.pop(0)
         if (nextLine, nextColumn) in snakePosition: #On check la collision avec lui même
             game_over = True
             
         snakePosition.append((nextLine, nextColumn)) #Y, X
+        flagMoveAck = 1 
 
         if grid[nextLine][nextColumn] == 2:
             coordonneesGoal = None
@@ -156,17 +158,25 @@ while running:
         
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RIGHT and snakeDirection !="LEFT":
-                snakeDirection="RIGHT"
-                print(snakeDirection)
+                if flagMoveAck == 1:
+                    snakeDirection="RIGHT"
+                    flagMoveAck=0
+                #print(snakeDirection)
             elif event.key == pygame.K_LEFT and snakeDirection !="RIGHT":
-                snakeDirection="LEFT"
-                print(snakeDirection)
+                if flagMoveAck == 1:
+                    snakeDirection="LEFT"
+                    flagMoveAck=0
+                    #print(snakeDirection)
             elif event.key == pygame.K_UP and snakeDirection !="DOWN":
-                snakeDirection="UP"
-                print(snakeDirection)
+                if flagMoveAck == 1:
+                    snakeDirection="UP"
+                    flagMoveAck=0
+                    #print(snakeDirection)
             elif event.key == pygame.K_DOWN and snakeDirection !="UP":
-                snakeDirection="DOWN"
-                print(snakeDirection)
+                if flagMoveAck == 1:
+                    snakeDirection="DOWN"
+                    flagMoveAck=0
+                #print(snakeDirection)
             elif event.key == pygame.K_SPACE and game_over == True:
                 restartGame()
                 game_over = False
