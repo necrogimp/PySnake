@@ -11,6 +11,7 @@ smallFontLoose = pygame.font.SysFont(None, 40)
 #Font du score
 scoreFont = pygame.font.SysFont(None, 40)
 
+
 #Flags
 game_over = False
 running = True
@@ -34,11 +35,14 @@ snakeSizeStart = 4
 #Buffer
 lastMoveTime = 0
 scoreValue = 0
-
+countSuperGoal = 0
+progressBar = 0
 snakePosition = []
 coordonneesGoal = None
+coordonneesSuperGoal = None
 snakeSize = snakeSizeStart
 grid = [[0 for x in range(gridHeight)] for y in range(gridWidth)] #[Y, X]
+progress = 0
 
 
 screen = pygame.display.set_mode((screenSizeWidth, screenSizeHeight))
@@ -55,6 +59,8 @@ def updateMap():
                 printCircle((200,150,65), column , line)   #Normaux
             elif grid[line][column] == 2: 
                 printCircle((245, 41, 0),  column , line)   #Objectifs
+            elif grid[line][column] == 3: 
+                printCircle((255, 244, 0),  column , line)   #SuperObjectifs
             else: 
                 printCircle((20,150,65),  column , line)    #Snake
 
@@ -77,7 +83,7 @@ def spawnSnake():
 
 
 def moveSnake():
-    global coordonneesGoal, grid ,snakeSize, game_over, scoreValue
+    global coordonneesGoal, grid ,snakeSize, game_over, scoreValue, coordonneesSuperGoal, progress
     #grid = [[0 for x in range(gridWidth)] for y in range(gridHeight)]
 
     if len(snakeDirection) > 1:
@@ -100,8 +106,14 @@ def moveSnake():
         if grid[nextLine][nextColumn] == 2: #On check si on a mangé un fruit
             coordonneesGoal = None
             snakeSize += 1
-            snakePosition.insert(0, (previousLine, previousColumn))
+            snakePosition.insert(0, (previousLine, previousColumn)) #on ajoute la dernière position à la liste
             scoreValue +=10
+            #print(snakeSize)
+        if grid[nextLine][nextColumn] == 3: #On check si on a mangé un Super fruit
+            coordonneesSuperGoal = None
+            snakeSize += 1
+            snakePosition.insert(0, (previousLine, previousColumn)) #on ajoute la dernière position à la liste
+            scoreValue += round(10*(progress/10))
             #print(snakeSize)
     else: #Si collision
         game_over = True
@@ -117,18 +129,32 @@ def moveSnake():
 
 
 def spawnGoal(): #Fait apparaitre l'objectif sur le terrain 
-    global grid
+    global grid, countSuperGoal
     randomY = 0
     randomX = 0
     #print(snakePosition)
     #print(snakePosition[0][1])
-
+    countSuperGoal += 1
     while True:
         randomY = random.randint(0,gridHeight - 1)
         randomX = random.randint(0,gridWidth - 1)
         if(randomY, randomX) not in snakePosition:
             grid[randomY][randomX] = 2
-            return(randomY, randomX)          
+            return(randomY, randomX)
+
+def spawnSuperGoal(): #Fait apparaitre l'objectif sur le terrain 
+    global grid, progress
+    randomY = 0
+    randomX = 0
+    #print(snakePosition)
+    #print(snakePosition[0][1])
+    progress = 0
+    while True:
+        randomY = random.randint(0,gridHeight - 1)
+        randomX = random.randint(0,gridWidth - 1)
+        if(randomY, randomX) not in snakePosition and grid[randomY][randomX] != 2:
+            grid[randomY][randomX] = 3
+            return(randomY, randomX)
 
 def printLoose():
     # Texte principal
@@ -154,7 +180,18 @@ def restartGame():
     scoreValue = 0
     spawnSnake()
 
+def loadBarre(coordonneesSuperGoal, width, left, top, height, thickness):
+    global progress
+    if coordonneesSuperGoal != None:
+        progressCalc = (((width-(thickness+1)*2))*progress)/100
+        print("progressCalc:",progressCalc)
 
+        pygame.draw.rect(screen, (200,0,0), (left, top, width, height), thickness)
+        pygame.draw.rect(screen, (255,0,0), (left+thickness+1, top+thickness+1, progressCalc, height-(thickness+1)*2), 0)
+
+        if progress < 100:
+            progress += 0.4
+     
 
 spawnSnake()
 
@@ -184,6 +221,13 @@ while running:
 
     if coordonneesGoal == None:
         coordonneesGoal = spawnGoal()
+    
+    if countSuperGoal == 5 and coordonneesSuperGoal == None:
+        countSuperGoal = 0 
+        coordonneesSuperGoal = spawnSuperGoal()
+
+    loadBarre(coordonneesSuperGoal ,221, 5, 5, 45, 2)
+
 
     updateMap()
 
@@ -205,6 +249,9 @@ while running:
 
     rect = score.get_rect(center=(screenSizeWidth/1.4, screenSizeHeight/16))
     screen.blit(score, rect)
+
+
+
 
     pygame.display.flip()
     clock.tick(60)
