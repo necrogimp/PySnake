@@ -17,7 +17,7 @@ game_over = False
 running = True
 
 #Constantes
-gridWidth = 15
+gridWidth = 10
 gridHeight = 15
 paddingGrid = 21
 screenSizeWidth = 750
@@ -180,7 +180,7 @@ def restartGame():
     scoreValue = 0
     spawnSnake()
 
-def loadBarre(coordonneesSuperGoal, width, left, top, height, thickness):
+def loadBarre(coordonneesSuperGoal, width, height, left, top, thickness):
     global progress
     if coordonneesSuperGoal != None:
         progressCalc = (((width-(thickness+1)*2))*progress)/100
@@ -226,7 +226,7 @@ while running:
         countSuperGoal = 0 
         coordonneesSuperGoal = spawnSuperGoal()
 
-    loadBarre(coordonneesSuperGoal ,221, 5, 5, 45, 2)
+    loadBarre(coordonneesSuperGoal ,screenSizeWidth/2, 20, screenSizeWidth/4, screenSizeHeight/8, 2)
 
 
     updateMap()
@@ -244,14 +244,12 @@ while running:
         print(grid[x])
     """
 
-    # Texte principal
+    # Texte score
     score = scoreFont.render(f"Score: {scoreValue:05} ", True, (255, 255, 255))
 
     rect = score.get_rect(center=(screenSizeWidth/1.4, screenSizeHeight/16))
+
     screen.blit(score, rect)
-
-
-
 
     pygame.display.flip()
     clock.tick(60)
