@@ -41,7 +41,7 @@ snakePosition = []
 coordonneesGoal = None
 coordonneesSuperGoal = None
 snakeSize = snakeSizeStart
-grid = [[0 for x in range(gridHeight)] for y in range(gridWidth)] #[Y, X]
+grid = [[0 for x in range(gridWidth)] for y in range(gridHeight)] #[Y, X]
 progress = 0
 
 
@@ -54,26 +54,26 @@ clock = pygame.time.Clock()
 def updateMap():
     for line in range(gridWidth):
         for column in range(gridHeight):
-            if grid[line][column] == 0:
+            if grid[column][line] == 0: #Y, X
                 #pygame.draw.circle(screen,(255,255,255),((screenSizeWidth/2)-(gridWidth*20)/2+(20*column),(screenSizeHeight/2)-(gridHeight*20)/2+(20*line)),10)
-                printCircle((200,150,65), column , line)   #Normaux
-            elif grid[line][column] == 2: 
-                printCircle((245, 41, 0),  column , line)   #Objectifs
-            elif grid[line][column] == 3: 
-                printCircle((255, 244, 0),  column , line)   #SuperObjectifs
+                printCircle((200,150,65), column , line, 10)   #Normaux
+            elif grid[column][line] == 2: 
+                printCircle((245, 41, 0),  column , line, 10)   #Objectifs
+            elif grid[column][line] == 3: 
+                printCircle((255, 244, 0),  column , line, 10)   #SuperObjectifs
             else: 
-                printCircle((20,150,65),  column , line)    #Snake
+                printCircle((20,150,65),  column , line, 10)    #Snake
+                
 
-
-def printCircle(couleur, column, line):
+def printCircle(couleur, column, line, diameter):
     pygame.draw.circle(
         screen,
         couleur,
         (
-        (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*column),
-        (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*line)
+        (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line),
+        (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)
         ),
-         10)
+         diameter)
 
 
 def spawnSnake():
@@ -171,13 +171,16 @@ def printLoose():
     screen.blit(text2, rect2)
 
 def restartGame():
-    global grid, coordonneesGoal, snakeSize, snakeDirection, scoreValue
+    global grid, coordonneesGoal, coordonneesSuperGoal,snakeSize, snakeDirection, scoreValue, countSuperGoal
     snakePosition.clear()
     snakeSize = snakeSizeStart
     coordonneesGoal = None
+    coordonneesSuperGoal = None
+    countSuperGoal = 0
     snakeDirection = ["RIGHT"]
     grid = [[0 for x in range(gridWidth)] for y in range(gridHeight)]
     scoreValue = 0
+    
     spawnSnake()
 
 def loadBarre(coordonneesSuperGoal, width, height, left, top, thickness):
