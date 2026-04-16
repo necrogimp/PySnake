@@ -49,7 +49,7 @@ screen = pygame.display.set_mode((screenSizeWidth, screenSizeHeight))
 clock = pygame.time.Clock()
 
 #SKIN
-#head_img = pygame.image.load("head.png").convert_alpha()
+head_img = pygame.image.load("./Snake/assets/tete_serpent.png").convert_alpha()
 
 def updateMap():
     for line in range(gridWidth):
@@ -61,11 +61,42 @@ def updateMap():
                 printCircle((245, 41, 0),  column , line, 10)   #Objectifs
             elif grid[column][line] == 3: 
                 printCircle((255, 244, 0),  column , line, 10)   #SuperObjectifs
+            elif grid[column][line] == 4: 
+                print(snakeDirection)
+                if (snakeDirection[0] == 'RIGHT'):
+                    screen.blit(head_img, (
+                        (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
+                        (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
+                        )
+                        )
+                if (snakeDirection[0] == 'UP'):
+                    rotated_head = pygame.transform.rotate(head_img, 90)
+                    screen.blit(rotated_head, (
+                        (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
+                        (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
+                        )
+                        )
+                if (snakeDirection[0] == 'DOWN'):
+                    rotated_head = pygame.transform.rotate(head_img, -90)
+                    screen.blit(rotated_head, (
+                        (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
+                        (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
+                        )
+                        )
+                if (snakeDirection[0] == 'LEFT'):
+                    rotated_head = pygame.transform.rotate(head_img, 180)
+                    screen.blit(rotated_head, (
+                        (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
+                        (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
+                        )
+                        )
             else: 
                 printCircle((20,150,65),  column , line, 10)    #Snake
+
+
                 
 
-def printCircle(couleur, column, line, diameter):
+def printCircle(couleur, column, line, radius):
     pygame.draw.circle(
         screen,
         couleur,
@@ -73,13 +104,20 @@ def printCircle(couleur, column, line, diameter):
         (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line),
         (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)
         ),
-         diameter)
+         radius)
+    
 
 
 def spawnSnake():
     for x in range(snakeSize):
-        grid[gridHeight//2][x] = 1
-        snakePosition.append((gridHeight//2, x))  #Y, X
+        if x < snakeSize-1:
+            grid[gridHeight//2][x] = 1
+            snakePosition.append((gridHeight//2, x))  #Y, X
+        elif x == snakeSize-1:
+            grid[gridHeight//2][x] = 4
+            snakePosition.append((gridHeight//2, x))  #Y, X
+    #print(grid)
+        
 
 
 def moveSnake():
@@ -123,9 +161,11 @@ def moveSnake():
         grid[previousLine][previousColumn] = 0 #Y, X
 
     for x in range(snakeSize):
-        grid[snakePosition[x][0]][snakePosition[x][1]] = 1
-
-#def checkCollid():
+        #print(snakePosition)
+        if (x < snakeSize-1):
+            grid[snakePosition[x][0]][snakePosition[x][1]] = 1
+        else:
+            grid[snakePosition[x][0]][snakePosition[x][1]] = 4
 
 
 def spawnGoal(): #Fait apparaitre l'objectif sur le terrain 
@@ -194,12 +234,14 @@ def loadBarre(coordonneesSuperGoal, width, height, left, top, thickness):
 
         if progress < 100:
             progress += 0.4
-     
+    
+
 
 spawnSnake()
 
 while running:
     screen.fill((0,0,0))
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
