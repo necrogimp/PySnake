@@ -1,6 +1,7 @@
 import pygame
 import time
 import random
+import mariadb
 
 pygame.init()
 
@@ -22,12 +23,23 @@ gridHeight = 15
 paddingGrid = 21
 screenSizeWidth = 750
 screenSizeHeight = 750
-direction = {
+directionTable = {
     "RIGHT": (0,1),
     "LEFT": (0,-1),
     "DOWN": (1,0),
     "UP": (-1,0)
 }
+
+cellTypes = {
+    "VIDE": 0,
+    "TETE": 1,
+    "CORPS_PAIR": 2,
+    "CORPS_IMPAIR": 3,
+    "QUEUE": 4,
+    "SUPERGOAL": 5,
+    "GOAL": 6
+}
+
 snakeSpeed = 200     # millisecondes entre chaque déplacement
 snakeDirection = ["RIGHT"] #Direction de départ
 snakeSizeStart = 4
@@ -41,7 +53,7 @@ snakePosition = []
 coordonneesGoal = None
 coordonneesSuperGoal = None
 snakeSize = snakeSizeStart
-grid = [[0 for x in range(gridWidth)] for y in range(gridHeight)] #[Y, X]
+grid = [[[0, 0] for x in range(gridWidth)] for y in range(gridHeight)] #[Y, X]
 progress = 0
 
 
@@ -56,27 +68,30 @@ body_even = pygame.image.load("./Snake/assets/corp_pair.png").convert_alpha()
 def updateMap():
     for line in range(gridWidth):
         for column in range(gridHeight):
-            if grid[column][line] == 0: #Y, X
+            if grid[column][line][0] == cellTypes["VIDE"]: #Y, X
                 #pygame.draw.circle(screen,(255,255,255),((screenSizeWidth/2)-(gridWidth*20)/2+(20*column),(screenSizeHeight/2)-(gridHeight*20)/2+(20*line)),10)
                 printCircle((200,150,65), column , line, 10)   #Vide
-            elif grid[column][line] == 2: 
+
+            elif grid[column][line][0] == cellTypes["GOAL"]: 
                 printCircle((245, 41, 0),  column , line, 10)   #Objectifs
-            elif grid[column][line] == 3: 
+
+            elif grid[column][line][0] == cellTypes["SUPERGOAL"]: 
                 printCircle((255, 244, 0),  column , line, 10)   #SuperObjectifs
-            elif grid[column][line] == 4: 
+
+            elif grid[column][line][0] == cellTypes["TETE"]:  #Tete serpent
                 #print(snakeDirection)
                 if (snakeDirection[0] == 'RIGHT'):
                     screen.blit(head_img, (
-                        (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
-                        (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
-                        )
+                                (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
+                                (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
+                            )
                         )
                 if (snakeDirection[0] == 'UP'):
                     rotated_head = pygame.transform.rotate(head_img, 90)
                     screen.blit(rotated_head, (
-                        (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
-                        (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
-                        )
+                                (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
+                                (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
+                            )
                         )
                 if (snakeDirection[0] == 'DOWN'):
                     rotated_head = pygame.transform.rotate(head_img, -90)
@@ -92,13 +107,13 @@ def updateMap():
                         (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
                         )
                         )
-            elif grid[column][line] == 5: 
+            elif grid[column][line][0] == cellTypes["CORPS_PAIR"]: 
                 screen.blit(body_odd, (
                 (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
                 (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
                 )
                 )
-            else: 
+            elif grid[column][line][0] == cellTypes["CORPS_IMPAIR"]: 
                 screen.blit(body_even, (
                 (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
                 (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
@@ -128,12 +143,12 @@ def spawnSnake():
                 parity = not parity
                 #print(parity)
                 if parity == False:
-                    grid[gridHeight//2][x] = 1
+                    grid[gridHeight//2][x] = [1, 0]
                 else :
-                    grid[gridHeight//2][x] = 5
+                    grid[gridHeight//2][x] = [5, 0]
                 snakePosition.append((gridHeight//2, x))  #Y, X
         elif x == snakeSize-1:
-            grid[gridHeight//2][x] = 4
+            grid[gridHeight//2][x] = [4, 0] 
             snakePosition.append((gridHeight//2, x))  #Y, X
     #print(grid)
         
@@ -146,52 +161,56 @@ def moveSnake():
     if len(snakeDirection) > 1:
         snakeDirection.pop(0)
 
-    moveDirection = direction[snakeDirection[0]] #Retourne le Tuple souhaité en selectionnant dans la lookup le nom de la direction
+    moveDirection = directionTable[snakeDirection[0]] #Retourne le Tuple souhaité en selectionnant dans la lookup le nom de la direction
     #print(snakeDirection)
 
-    nextLine = snakePosition[-1][0] + moveDirection[0]      #Y
-    nextColumn = snakePosition[-1][1] + moveDirection[1]    #X
-    previousLine = snakePosition[0][0]                      #Y
+    nextLine = snakePosition[-1][0] + moveDirection[0]      #Y On stock le numéro de la prochaine ligne 
+    nextColumn = snakePosition[-1][1] + moveDirection[1]    #X On stock le numéro de la prochaine colonne
+    previousLine = snakePosition[0][0]                      #Y 
     previousColumn = snakePosition[0][1]                    #X
 
     if(nextLine >= 0 and nextLine < gridHeight and nextColumn >= 0 and nextColumn < gridWidth): #On check la collision avec les murs
         snakePosition.pop(0)
+
         if (nextLine, nextColumn) in snakePosition: #On check la collision avec lui même
             game_over = True
             
         snakePosition.append((nextLine, nextColumn)) #Y, X On applique le mouvement
 
-        if grid[nextLine][nextColumn] == 2: #On check si on a mangé un fruit
+        if grid[nextLine][nextColumn][0] == cellTypes["GOAL"]: #On check si on a mangé un fruit
             coordonneesGoal = None
             snakeSize += 1
             snakePosition.insert(0, (previousLine, previousColumn)) #on ajoute la dernière position à la liste
             scoreValue +=10
             #print(snakeSize)
-        if grid[nextLine][nextColumn] == 3: #On check si on a mangé un Super fruit
+
+        if grid[nextLine][nextColumn][0] == cellTypes["SUPERGOAL"]: #On check si on a mangé un Super fruit
             coordonneesSuperGoal = None
             snakeSize += 1
             snakePosition.insert(0, (previousLine, previousColumn)) #on ajoute la dernière position à la liste
             scoreValue += round(10*(progress/10))
             #print(snakeSize)
+
     else: #Si collision
         game_over = True
         
 
-    if(grid[previousLine][previousColumn] != 0): 
-        grid[previousLine][previousColumn] = 0 #Y, X
+    if(grid[previousLine][previousColumn] != 0): #on nettoie la grille 
+        grid[previousLine][previousColumn][0] = cellTypes["VIDE"] #Y, X
 
     for x in range(snakeSize): #on update la grid en fonction du tableau de position du snake
         #print(snakePosition)
-        if (x < snakeSize-1):
+        if (x < snakeSize-1): #on fait tout le corps sauf le dernier la tete
+
+
             #grid[snakePosition[x][0]][snakePosition[x][1]] = 1
-            if(grid[snakePosition[x][0]][snakePosition[x][1]] in [0, 4 , 5]):
-                grid[snakePosition[x][0]][snakePosition[x][1]] = 1
+            if(grid[snakePosition[x][0]][snakePosition[x][1]][0] in [0, 5]):   #Si il s'agit de vide, tete ou impair
+                grid[snakePosition[x][0]][snakePosition[x][1]][0] = cellTypes["CORPS_PAIR"]          #on met corps pair
 
             else:
-                grid[snakePosition[x][0]][snakePosition[x][1]] = 5
-
+                grid[snakePosition[x][0]][snakePosition[x][1]][0] = cellTypes["CORPS_IMPAIR"] #sinon on met impair
         else:
-            grid[snakePosition[x][0]][snakePosition[x][1]] = 4
+            grid[snakePosition[x][0]][snakePosition[x][1]][0] = cellTypes["TETE"] #x == snakesize est forcement la tête
 
 
 def spawnGoal(): #Fait apparaitre l'objectif sur le terrain 
@@ -205,7 +224,7 @@ def spawnGoal(): #Fait apparaitre l'objectif sur le terrain
         randomY = random.randint(0,gridHeight - 1)
         randomX = random.randint(0,gridWidth - 1)
         if(randomY, randomX) not in snakePosition:
-            grid[randomY][randomX] = 2
+            grid[randomY][randomX] = [cellTypes["GOAL"], 0] #Goal
             return(randomY, randomX)
 
 def spawnSuperGoal(): #Fait apparaitre l'objectif sur le terrain 
@@ -219,7 +238,7 @@ def spawnSuperGoal(): #Fait apparaitre l'objectif sur le terrain
         randomY = random.randint(0,gridHeight - 1)
         randomX = random.randint(0,gridWidth - 1)
         if(randomY, randomX) not in snakePosition and grid[randomY][randomX] != 2:
-            grid[randomY][randomX] = 3
+            grid[randomY][randomX] = [cellTypes["SUPERGOAL"], 0] #Supergoal
             return(randomY, randomX)
 
 def printLoose():
@@ -262,10 +281,11 @@ def loadBarre(coordonneesSuperGoal, width, height, left, top, thickness):
             progress += 0.4
     
 
-
+mariadb.connecter_mariadb()
 spawnSnake()
 
 while running:
+    #print(grid)
     screen.fill((0,0,0))
     
     for event in pygame.event.get():
@@ -300,15 +320,19 @@ while running:
     loadBarre(coordonneesSuperGoal ,screenSizeWidth/2, 20, screenSizeWidth/4, screenSizeHeight/8, 2)
 
 
-    updateMap()
+
 
     currentTime = pygame.time.get_ticks()
     if game_over == False:
+        updateMap() #Si on est pas game over on update la map
         if currentTime - lastMoveTime > snakeSpeed:
-            moveSnake()
+            moveSnake()#On bouge le serpent avec une période défini par snakeSpeed
+
             lastMoveTime = currentTime
     else:
+        #mariadb.ajouter_score_snake("Jean", 250)
         printLoose()
+
 
     """"
     for x in range(gridWidth):
