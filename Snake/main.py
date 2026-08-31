@@ -18,8 +18,8 @@ game_over = False
 running = True
 
 #Constantes
-gridWidth = 6
-gridHeight = 6
+gridWidth = 15
+gridHeight = 15
 paddingGrid = 21
 screenSizeWidth = 750
 screenSizeHeight = 750
@@ -40,7 +40,7 @@ cellTypes = {
     "GOAL": 6
 }
 
-snakeSpeed = 500    # millisecondes entre chaque déplacement
+snakeSpeed = 300    # millisecondes entre chaque déplacement
 snakeDirection = ["RIGHT"] #Direction de départ
 snakeSizeStart = 4
 
@@ -52,10 +52,10 @@ progressBar = 0
 
 coordonneesGoal = None
 coordonneesSuperGoal = None
-snakePosition = []
+snakePosition = [] #Liste des points de coordonnées dans la grid | [Ligne], [Colonne], [Direction]
 snakeSize = snakeSizeStart
 snakeParity = True;
-grid = [[[0, 0] for x in range(gridWidth)] for y in range(gridHeight)] #[Y, X]
+grid = [[[0, 0] for x in range(gridWidth)] for y in range(gridHeight)] #[Y, X] // [y][x][0] = Type de case => [1] = Orientation de la case
 progress = 0
 
 
@@ -80,10 +80,19 @@ def updateMap(): #Execute les commandes de mise en page de l'écran
                 printCircle((245, 41, 0),  column , line, 10)   #Objectifs
 
             elif grid[column][line][0] == cellTypes["SUPERGOAL"]: 
-                printCircle((255, 244, 0),  column , line, 10)   #SuperObjectifs
+                printCircle((120, 120, 0),  column , line, 10)   #SuperObjectifs
 
             elif grid[column][line][0] == cellTypes["CORPS_PAIR"]: 
                 printBodyParts(body_even, grid[column][line][1], line, column)
+
+            elif grid[column][line][0] == cellTypes["CORPS_IMPAIR"]: 
+                printBodyParts(body_odd, grid[column][line][1], line, column)
+
+            elif grid[column][line][0] == cellTypes["QUEUE"]: 
+                printBodyParts(tail, grid[column][line][1], line, column)
+
+            elif grid[column][line][0] == cellTypes["TETE"]: 
+                printBodyParts(head_img, grid[column][line][1], line, column)
 
 
 def printBodyParts(bodyPart, orientation, line, column):
@@ -95,7 +104,7 @@ def printBodyParts(bodyPart, orientation, line, column):
                     )
                     )
                 elif orientation == 1: #bas
-                    rotated_part = pygame.transform.rotate(bodyPart, 90)
+                    rotated_part = pygame.transform.rotate(bodyPart, 270)
                     screen.blit(rotated_part, (
                     (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
                     (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
@@ -109,7 +118,7 @@ def printBodyParts(bodyPart, orientation, line, column):
                     )
                     )
                 elif orientation == 3: #haut
-                    rotated_part = pygame.transform.rotate(bodyPart, 270)
+                    rotated_part = pygame.transform.rotate(bodyPart, 90)
                     screen.blit(rotated_part, (
                     (screenSizeWidth/2)-(gridWidth*20)/2+(paddingGrid*line)-10, 
                     (screenSizeHeight/2)-(gridHeight*20)/2+(paddingGrid*column)-10
@@ -130,8 +139,14 @@ def printCircle(couleur, column, line, radius):
 
 def spawnSnake():
     for i in range(snakeSize):
-        grid[gridHeight//2][i] = [cellTypes["CORPS_PAIR"], 0]
-        snakePosition.append([gridHeight//2, i, 0]) #On init la liste de position du serpent.
+        if(i == 0):
+            grid[gridHeight//2][i] = [cellTypes["QUEUE"], 0]   #On init la grille
+        elif(i == snakeSize-1):
+            grid[gridHeight//2][i] = [cellTypes["TETE"], 0]   #On init la grille
+        else:
+            grid[gridHeight//2][i] = [cellTypes["CORPS_PAIR"], 0]   #On init la grille
+
+        snakePosition.append([gridHeight//2, i, 0])             #On init la liste de position du serpent.
         """print(snakePosition[i])"""
         
 
@@ -139,31 +154,31 @@ def spawnSnake():
 def moveSnake(): #Deplace dans la matrice GRID le serpent
     global coordonneesGoal, grid ,snakeSize, game_over, scoreValue, coordonneesSuperGoal, progress, snakeParity
     #grid = [[0 for x in range(gridWidth)] for y in range(gridHeight)]
-
+    #print(grid)
     if len(snakeDirection) > 1:
         snakeDirection.pop(0)
 
     moveDirection = directionTable[snakeDirection[0]] #Retourne le Tuple souhaité en selectionnant dans la lookup le nom de la direction
     #print(snakeDirection)
 
-    nextLine =      snakePosition[-1][0] + moveDirection[0]    #Y On stock le numéro de la prochaine ligne 
-    nextColumn =    snakePosition[-1][1] + moveDirection[1]    #X On stock le numéro de la prochaine colonne
-    nextDirection = moveDirection[2] #2 est la case avec l'information de la direction
+    nextLine =      snakePosition[-1][0] + moveDirection[0]     #Y On stock le numéro de la prochaine ligne 
+    nextColumn =    snakePosition[-1][1] + moveDirection[1]     #X On stock le numéro de la prochaine colonne
+    nextDirection = moveDirection[2]                            #2 est la case avec l'information de la direction
     # print("\n nextdirection")
     # print(nextDirection)
-    firstLine =     snakePosition[0][0]         #Y
-    firstColumn  =  snakePosition[0][1]      
-    """print(snakePosition)   #X
-    print("prevousLine", firstLine)
-    print("prevousColumn", firstColumn )"""
+    firstLine =         snakePosition[0][0]         #Dans le premier tuple je prend Y
+    firstColumn  =      snakePosition[0][1]         #Dans le premier tuple je prend X
+    firstDirection  =   snakePosition[0][2]      
+    # print(snakePosition)   
+    # print("prevousLine", firstLine)
+    # print("prevousColumn", firstColumn )
 
 
     """"COLLISION CHECKER"""
-
+    #print(snakePosition)
     if(nextLine >= 0 and nextLine < gridHeight and nextColumn >= 0 and nextColumn < gridWidth): #On check la collision avec les murs
         snakePosition.pop(0)
-
-        if (nextLine, nextColumn) in snakePosition: #On check la collision avec lui même
+        if any(p[0] == nextLine and p[1] == nextColumn for p in snakePosition): #On check la collision avec lui même
             game_over = True
             
         snakePosition.append((nextLine, nextColumn, nextDirection)) #Y, X On applique le mouvement
@@ -171,15 +186,18 @@ def moveSnake(): #Deplace dans la matrice GRID le serpent
         if grid[nextLine][nextColumn][0] == cellTypes["GOAL"]: #On check si on a mangé un fruit
             coordonneesGoal = None
             snakeSize += 1
-            #snakePosition.insert(0, (previousLine, previousColumn)) #on ajoute la dernière position à la liste
+            snakePosition.insert(0, (firstLine, firstColumn, firstDirection)) #on ajoute la dernière position à la liste
             scoreValue +=10
             #print(snakeSize)
 
         if grid[nextLine][nextColumn][0] == cellTypes["SUPERGOAL"]: #On check si on a mangé un Super fruit
             coordonneesSuperGoal = None
             snakeSize += 1
-            #snakePosition.insert(0, (previousLine, previousColumn)) #on ajoute la dernière position à la liste
-            scoreValue += round(10*(progress/10))
+            snakePosition.insert(0, (firstLine, firstColumn, firstDirection)) #on ajoute la dernière position à la liste
+            if(round(100-progress < 10)):
+               scoreValue += 10
+            else:
+                scoreValue += round(100-progress)
             #print(snakeSize)
 
     else: #Si collision
@@ -193,39 +211,56 @@ def moveSnake(): #Deplace dans la matrice GRID le serpent
 
     for x in range(snakeSize): #on update la grid en fonction du tableau de position du snake
         #print(snakePosition)
-        grid[snakePosition[x][0]][snakePosition[x][1]][0] = cellTypes["CORPS_PAIR"] 
-        grid[snakePosition[x][0]][snakePosition[x][1]][1] = snakePosition[x][2] #on renseigne la direction du serpent
-        
-        
+        #print("\n\n",grid)
+        if(x == snakeSize-1): #Dernière case du serpent
+            #grid[y][x][dir]
+            grid[snakePosition[x][0]][snakePosition[x][1]][0] = cellTypes["TETE"] 
+            grid[snakePosition[x][0]][snakePosition[x][1]][1] = snakePosition[x][2] #on renseigne la direction du serpent
+
+        elif( x == 0):  #Première case du serpent
+            grid[snakePosition[x][0]][snakePosition[x][1]][0] = cellTypes["QUEUE"] 
+            grid[snakePosition[x][0]][snakePosition[x][1]][1] = snakePosition[x][2] #on renseigne la direction du serpent
+
+        elif(x == snakeSize-2): #Avant dernière case du serpent
+
+            print(grid[snakePosition[x-1][0]][snakePosition[x-1][1]][0])
+
+            if(grid[snakePosition[x-1][0]][snakePosition[x-1][1]][0] == cellTypes["CORPS_IMPAIR"]):
+                 grid[snakePosition[x][0]][snakePosition[x][1]][0] = cellTypes["CORPS_PAIR"]
+
+            if(grid[snakePosition[x-1][0]][snakePosition[x-1][1]][0] == cellTypes["CORPS_PAIR"]):
+                 grid[snakePosition[x][0]][snakePosition[x][1]][0] = cellTypes["CORPS_IMPAIR"]
+
+
+        # else:
+        #     grid[snakePosition[x][0]][snakePosition[x][1]][0] = cellTypes["CORPS_PAIR"] 
+        #     grid[snakePosition[x][0]][snakePosition[x][1]][1] = snakePosition[x][2] #on renseigne la direction du serpent
 
 
 def spawnGoal(): #Fait apparaitre l'objectif sur le terrain 
     global grid, countSuperGoal
     randomY = 0
     randomX = 0
-    #print(snakePosition)
-    #print(snakePosition[0][1])
     countSuperGoal += 1
     while True:
         randomY = random.randint(0,gridHeight - 1)
         randomX = random.randint(0,gridWidth - 1)
-        if(randomY, randomX) not in snakePosition:
-            grid[randomY][randomX] = [cellTypes["GOAL"], 0] #Goal
+        if(randomY, randomX) not in [(p[0], p[1]) for p in snakePosition]:
+            grid[randomY][randomX][0] = cellTypes["GOAL"] #Goal
             return(randomY, randomX)
 
 def spawnSuperGoal(): #Fait apparaitre l'objectif sur le terrain 
     global grid, progress
     randomY = 0
     randomX = 0
-    #print(snakePosition)
-    #print(snakePosition[0][1])
     progress = 0
     while True:
         randomY = random.randint(0,gridHeight - 1)
         randomX = random.randint(0,gridWidth - 1)
-        if(randomY, randomX) not in snakePosition and grid[randomY][randomX] != 2:
-            grid[randomY][randomX] = [cellTypes["SUPERGOAL"], 0] #Supergoal
+        if(randomY, randomX) not in [(p[0], p[1]) for p in snakePosition]:
+            grid[randomY][randomX][0] = cellTypes["SUPERGOAL"] #Supergoal
             return(randomY, randomX)
+    
 
 def printLoose():
     # Texte principal
@@ -256,6 +291,7 @@ def restartGame():
 
 def loadBarre(coordonneesSuperGoal, width, height, left, top, thickness):
     global progress
+    #print(progress)
     if coordonneesSuperGoal != None:
         progressCalc = (((width-(thickness+1)*2))*progress)/100
         #print("progressCalc:",progressCalc)
@@ -302,6 +338,7 @@ while running:
     if countSuperGoal == 5 and coordonneesSuperGoal == None:
         countSuperGoal = 0 
         coordonneesSuperGoal = spawnSuperGoal()
+        #print(grid)
 
     loadBarre(coordonneesSuperGoal ,screenSizeWidth/2, 20, screenSizeWidth/4, screenSizeHeight/8, 2)
 
